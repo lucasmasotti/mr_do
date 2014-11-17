@@ -75,7 +75,8 @@ int main(){
     char entrada_usuario;
 	int opcao_usuario;
 
-	
+	HANDLE n_console;
+	n_console = GetStdHandle(STD_OUTPUT_HANDLE);
 	
 	printf("\n1 - Novo jogo");
 	printf("\n2 - Continuar");
@@ -90,8 +91,10 @@ int main(){
         if(kbhit()){
             entrada_usuario = getch();
             move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario);
-            imprime_matriz(matriz);
-			Sleep(10);
+            LockWindowUpdate(n_console);
+			imprime_matriz(matriz);
+			LockWindowUpdate(NULL);
+			Sleep(20);
         }
     }
 
