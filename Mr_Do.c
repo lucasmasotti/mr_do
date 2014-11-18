@@ -4,7 +4,6 @@
 #define NUMERO_LINHAS 23
 #define NUMERO_COLUNAS 60
 
-
 // Structs
 typedef struct
 {
@@ -15,7 +14,7 @@ typedef struct
 typedef struct
 {
 	char name[40];
-	int score; 
+	int score;
 } Highscore;
 
 typedef struct
@@ -24,22 +23,26 @@ typedef struct
 	int ghosts;
 } GameState;
 
-
 void imprime_matriz(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]);
 Coordenada posicao_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]);
 void move_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada coordenada_inicial, char direcao);
 void gotoxy(int x, int y);
 
-char novo_char(char char_antigo); 
+char novo_char(char char_antigo);
 
 void nova_cor(char caractere_impresso);
 
 //TO DO
+void sair_jogo();
+void abre_fase();
+
+void salvar_highscores();
+void salvar_cenarios();
+
+void verifica_colisoes(GameState *estado);
+
 void colidiu_fantasma();
-void colidiu_fruta();
-
-
-
+void colidiu_fruta(GameState *estado);
 
 
 // Variáveis globais
@@ -73,28 +76,32 @@ int main(){
 		"vvvvvvvvvvvvvvvvvvvvvvvdvvvvvvvvvvivvvvvvvvvvvvvvvvppppppppp"
     };
     char entrada_usuario;
-	int opcao_usuario;
+    Highscore vetor_pontuacoes[6];
+    GameState estado_jogo;
+    estado_jogo.score = 0;
 
 	HANDLE n_console;
 	n_console = GetStdHandle(STD_OUTPUT_HANDLE);
-	
-	printf("\n1 - Novo jogo");
-	printf("\n2 - Continuar");
-	printf("\n3 - High Scores");
-	printf("\n4 - Sair");
-	printf("\n\nDigite a opcao desejada\n-> ");
-	scanf("%d", &opcao_usuario);
-	
+
 
     imprime_matriz(matriz);
     while(1){
         if(kbhit()){
             entrada_usuario = getch();
-            move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario);
-            LockWindowUpdate(n_console);
-			imprime_matriz(matriz);
-			LockWindowUpdate(NULL);
-			Sleep(20);
+            if(entrada_usuario == 27)
+            {
+                sair_jogo();
+            }
+            else
+            {
+                move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario);
+                LockWindowUpdate(n_console);
+                verifica_colisoes(&estado_jogo);
+                imprime_matriz(matriz);
+                printf("%d", estado_jogo.score);
+                LockWindowUpdate(NULL);
+                Sleep(20);
+            }
         }
     }
 
@@ -221,28 +228,10 @@ void gotoxy(int x, int y){
 
 /// Returna um novo character baseado no character antigo, além de chamar os eventos corretos para a colisão com fantasma ou com frutas
 char novo_char(char char_antigo){
-	switch(char_antigo){
-		case 'v':
-			return 'v';
-			break;
-		case 'p':
-			return 'v';
-			break;
-		case 'n':
-			return 'n';
-			break;
-		case 'i':
-			colidiu_fantasma();
-			return 'v';
-			break;
-		case 'f':
-			colidiu_fruta();
-			return 'v';
-			break;
-		default:
-			return 'v';
-			break;
-	}
+	if(char_antigo == 'n')
+        return 'n';
+    else
+        return 'v';
 }
 
 /// Muda a cor do terminal de acordo com o caractere que será impresso
@@ -256,14 +245,14 @@ void nova_cor(char caractere_impresso){
 		5 -	Roxo				13 - Rosa
 		6 -	Dourado				14 - Amarelo
 		7 -	Branco				15 - Branco ?
-		8 - Cinza	
+		8 - Cinza
 	*/
 
 	int cor = 15;
 	// Necessário para alterar a cor do console
 	HANDLE h_console;
 	h_console = GetStdHandle(STD_OUTPUT_HANDLE);
-	
+
 	switch(caractere_impresso){
 		case 'p':
 			cor = 2;
@@ -288,6 +277,33 @@ void colidiu_fantasma(){
 
 }
 
-void colidiu_fruta(){
+void colidiu_fruta(GameState *estado)
+{
+    estado->score += 50;
+}
+
+void verifica_colisoes(GameState *estado)
+{
+    if(caractere_mr_do_passou == 'f')
+    {
+        colidiu_fruta(estado);
+    }
+
+}
+void sair_jogo()
+{
+    salvar_cenario();
+    salvar_estado();
+
+}
+
+void salvar_cenario()
+{
+
+}
+
+void salvar_estado()
+{
+
 
 }
