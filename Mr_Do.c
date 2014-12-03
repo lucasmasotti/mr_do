@@ -18,7 +18,7 @@ typedef struct
 
 typedef struct
 {
-	char name[40];
+	char nome[40];
 	int score;
 } Highscore;
 
@@ -46,6 +46,7 @@ typedef struct
 void abre_fase (char m[NUMERO_LINHAS][NUMERO_COLUNAS], char nome_arquivo[40]);
 void salvar_cenario(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS]);
 void salvar_highscores(GameState estado_jogo, Highscore vetor_pontuacoes[6]);
+void carregar_highscores(Highscore vetor_pontuacoes[6]);
 
 //Manipulação do estado de jogo
 void salvar_gamestate (GameState estado_jogo);
@@ -57,17 +58,17 @@ void nova_cor(char caractere_impresso);
 void gotoxy(int x, int y);
 void menu();
 void imprime_display(int score, int frutas);
+void imprime_highscore(Highscore vetor_pontuacoes[6]);
 
 //Mr. DO
 Coordenada posicao_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]);
-void move_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada coordenada_inicial, char direcao, char *caractere_passou);
+void move_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada coordenada_inicial, char direcao, char *caractere_passou, int *matou);
 char novo_char(char char_antigo);
 
 //Jogo em geral
 void verifica_colisoes(GameState *estado, int *numero_frutas, char caractere_passou);
 int verifica_estado(GameState estado_jogo, int fantasmas_criados, int quantidade_frutas);
 void colidiu_fruta(GameState *estado, int *numero_frutas);
-void colidiu_fantasma();
 
 
 /// Fantasmas:
@@ -81,10 +82,7 @@ void novo_passo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada 
 
 Coordenada posicao_ninho(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]);
 
-//TO DO
-//void sair_jogo();
-
-
+int recoloca_fantasmas(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasmas[10]);
 
 
 
@@ -92,8 +90,8 @@ int main(){
 	char matriz[NUMERO_LINHAS][NUMERO_COLUNAS];
 
 	// Fases
-    char fase1[] = "fase.txt";
-    char fase_salva[] = "save.txt";
+    char fase1[] = "fase1.txt";
+    char fase_salva[] = "continuar.txt";
 
     // Estado do jogo
     GameState estado_jogo;
@@ -116,6 +114,7 @@ int main(){
     Coordenada coordenada_ninho;
 
     Highscore vetor_pontuacoes[6];
+    carregar_highscores(vetor_pontuacoes);
 
     char caractere_mr_do_passou = 'v';
 
@@ -152,12 +151,17 @@ int main(){
                 coordenada_ninho = posicao_ninho(matriz);
                 break;
         case 2:
-                novo_GameState(&estado_jogo);
                 abre_fase(matriz, fase_salva);
+                novo_GameState(&estado_jogo);
+                estado_jogo.ghosts = conta_fantasmas(matriz);
+                coordenada_ninho = posicao_ninho(matriz);
+                indice_fantasma = recoloca_fantasmas(matriz, fantasmas);
+                quantidade_fantasmas_criados = indice_fantasma+1;
                 break;
         case 3:
+                acaba_jogo = 1;
+                imprime_highscore(vetor_pontuacoes);
                 break;
-
         case 4:
                 acaba_jogo = 1;
                 break;
@@ -195,7 +199,7 @@ int main(){
                     esc_pressionado = 1;
 
                 } else {
-                    move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario, &caractere_mr_do_passou);
+                    move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario, &caractere_mr_do_passou, &matou_mr_do);
                     verifica_colisoes(&estado_jogo, &quantidade_frutas, caractere_mr_do_passou);
                 }
             }
@@ -312,7 +316,7 @@ void imprime_matriz(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]){
 }
 
 /// Recebe uma struct com a Coordenada inicial do Mr. Do e uma posicao ('d', 'e', 'c', 'b'). Move o Mr. Do para a posicao indicada
-void move_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada coordenada_inicial, char direcao, char *caractere_passou){
+void move_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada coordenada_inicial, char direcao, char *caractere_passou, int *matou) {
 	/*
 	Direções:
 	w - cima
@@ -441,10 +445,6 @@ void nova_cor(char caractere_impresso){
 	SetConsoleTextAttribute(h_console, cor);
 }
 
-void colidiu_fantasma(){
-
-}
-
 void colidiu_fruta(GameState *estado, int *numero_frutas)
 {
     estado->score += 50;
@@ -468,7 +468,7 @@ void salvar_cenario(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS])
     int i;
     int j;
 
-    arq = fopen("save.txt", "w");
+    arq = fopen("continuar.txt", "w");
 
     if (arq == NULL)
     {
@@ -493,7 +493,7 @@ void salvar_highscores(GameState estado_jogo, Highscore vetor_pontuacoes[6])
 {
     int i;
     int j;
-    int temp;
+    Highscore score_temporario;
     int score_e_maior = 0;
     FILE *arq;
 
@@ -508,21 +508,20 @@ void salvar_highscores(GameState estado_jogo, Highscore vetor_pontuacoes[6])
 
     if(score_e_maior)
     {
-        vetor_pontuacoes[6].score = estado_jogo.score;
+        vetor_pontuacoes[5].score = estado_jogo.score;
         printf("Nome do jogador: ");
         fflush(stdin);
-        gets(vetor_pontuacoes[6].name);
+        gets(vetor_pontuacoes[5].nome);
     }
-
         for(i = 0; i < 6; i++)
         {
-            for(j = 0; j < i-1; j++)
+            for(j = 0; j < 5; j++)
             {
                 if(vetor_pontuacoes[j+1].score > vetor_pontuacoes[j].score)
                 {
-                    temp = vetor_pontuacoes[j+1].score;
-                    vetor_pontuacoes[j+1].score = vetor_pontuacoes[j].score;
-                    vetor_pontuacoes[j].score = temp;
+                    score_temporario = vetor_pontuacoes[j+1];
+                    vetor_pontuacoes[j+1] = vetor_pontuacoes[j];
+                    vetor_pontuacoes[j] = score_temporario;
                 }
             }
         }
@@ -532,7 +531,7 @@ void salvar_highscores(GameState estado_jogo, Highscore vetor_pontuacoes[6])
         {
             printf("Erro na abertura de highscores.bin");
         } else {
-            for(i = 0; i < 5; i++)
+            for(i = 0; i < 6; i++)
             {
                 fwrite(&vetor_pontuacoes[i], sizeof(Highscore), 1, arq);
             }
@@ -774,4 +773,65 @@ void novo_passo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada 
         }
 
     }
+}
+
+void imprime_highscore(Highscore vetor_pontuacoes[6])
+{
+    int i;
+    for(i = 0; i < 5; i++)
+    {
+        printf("Nome: ");
+        printf("\t%s", vetor_pontuacoes[i].nome);
+        printf("\tPontuacao: %d", vetor_pontuacoes[i].score);
+        printf("\n");
+    }
+}
+
+void carregar_highscores(Highscore vetor_pontuacoes[6])
+{
+    FILE *arq;
+    arq = fopen("highscores.bin", "rb");
+    Highscore score_temp;
+    score_temp.nome[0] = '-';
+    score_temp.nome[1] = '\0';
+    score_temp.score = 0;
+    int i;
+        if(arq == NULL)
+        {
+            printf("Arquivo de highscores nao encontrando\n");
+            for(i = 0; i < 6; i++)
+            {
+                vetor_pontuacoes[i] = score_temp;
+            }
+        } else {
+            for(i = 0; i < 5; i++)
+            {
+                fread(&vetor_pontuacoes[i], sizeof(Highscore), 1, arq);
+            }
+            vetor_pontuacoes[5] = score_temp;
+        }
+        fclose(arq);
+}
+
+int recoloca_fantasmas(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasmas[10])
+{
+    int i;
+    int j;
+    int indice_fantasma = 0;
+    for(i = 0; i < NUMERO_LINHAS; i++)
+    {
+        for(j = 0; j < NUMERO_COLUNAS; j++)
+        {
+            if(matriz[i][j] == 'i')
+            {
+                fantasmas[indice_fantasma].linha = i;
+                fantasmas[indice_fantasma].coluna = j;
+                fantasmas[indice_fantasma].estado = 1;
+                fantasmas[indice_fantasma].ultima_direcao = 1;
+                indice_fantasma++;
+            }
+        }
+    }
+    return indice_fantasma;
+
 }
