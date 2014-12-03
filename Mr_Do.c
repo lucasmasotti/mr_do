@@ -785,6 +785,7 @@ void imprime_highscore(Highscore vetor_pontuacoes[6])
         printf("\tPontuacao: %d", vetor_pontuacoes[i].score);
         printf("\n");
     }
+    system("pause");
 }
 
 void carregar_highscores(Highscore vetor_pontuacoes[6])
