@@ -6,7 +6,7 @@
 #define NUMERO_LINHAS 23
 #define NUMERO_COLUNAS 61
 #define NUMERO_FANTASMAS 10
-#define CICLOS_NOVO_FANTASMA 60
+#define CICLOS_NOVO_FANTASMA 120
 #define CICLOS_NOVO_MOVIMENTO 2
 
 // Structs
@@ -65,7 +65,7 @@ char novo_char(char char_antigo);
 
 //Jogo em geral
 void verifica_colisoes(GameState *estado, int *numero_frutas, char caractere_passou);
-void verifica_estado();
+int verifica_estado(GameState estado_jogo, int fantasmas_criados, int quantidade_frutas);
 void colidiu_fruta(GameState *estado, int *numero_frutas);
 void colidiu_fantasma();
 
@@ -75,11 +75,9 @@ int conta_fantasmas(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS]);
 int is_cross(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasma);
 int is_next_wall(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasma);
 void nova_direcao_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma *fantasma, int ignorar_ultima);
-void move_fantasma(Fantasma *fantasma, char matriz[NUMERO_LINHAS][NUMERO_COLUNAS]);
-void criar_novo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho);
-
-void funcao_fantasma(char mat[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasmas[], GameState estado_jogo, Coordenada coordenada_ninho);
-
+void move_fantasma(Fantasma *fantasma, char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, int *matou);
+void criar_novo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, Fantasma fantasmas[10], GameState *estado_jogo, int *indice_fantasma, int *quantidade_fantasmas_criados);
+void novo_passo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, Fantasma fantasmas[10], GameState estado_jogo, int *matou);
 
 Coordenada posicao_ninho(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]);
 
@@ -106,8 +104,10 @@ int main(){
 
     int quantidade_fantasmas_criados = 0;
 
+    int matou_mr_do = 0;
+
     //Contagem de ciclos
-    int ciclos_novo_fantasma = 0;
+    int ciclos_novo_fantasma = 100;
     int ciclos_move_fantasma = 0;
 
     //Fantasmas
@@ -123,6 +123,9 @@ int main(){
     char entrada_usuario;
     int menu_opcao;
     int acaba_jogo = 0;
+    int esc_pressionado = 0;
+
+    int resultado_jogo = 0;
 
     //Manipulação do console
 	HANDLE n_console;
@@ -167,49 +170,21 @@ int main(){
         imprime_display(estado_jogo.score, quantidade_frutas);
     }
 
-        while(!(acaba_jogo))
+        while(!acaba_jogo)
         {
-
-            //Verifica se já se passaram 0.5 segundos
+            //Verifica se já se passaram 0.1 segundos
             if(ciclos_move_fantasma >= CICLOS_NOVO_MOVIMENTO)
             {
-                int i;
-                for(i = 0; i < estado_jogo.ghosts; i++)
-                {
-                    if(fantasmas[i].estado)
-                    {
-                        if(is_cross(matriz, fantasmas[i]) == 1)
-                        {
-                            nova_direcao_fantasma(matriz, &fantasmas[i], fantasmas[i].ultima_direcao);
-                        }
-                        else if(is_next_wall(matriz, fantasmas[i]) == 0)
-                        {
-                            move_fantasma(&fantasmas[i], matriz);
-                        }
-                        else
-                        {
-                            nova_direcao_fantasma(matriz, &fantasmas[i], fantasmas[i].ultima_direcao);
-                        }
-
-                    }
-
-                }
-
+                novo_passo_fantasma(matriz, coordenada_ninho,fantasmas, estado_jogo, &matou_mr_do);
                 ciclos_move_fantasma = 0;
             }
             //Verifica se já passaram 3 segundos e se o numero maximo de fantasmas já foi excedido
             if((quantidade_fantasmas_criados < 10) && (ciclos_novo_fantasma >= CICLOS_NOVO_FANTASMA))
             {
-                Fantasma novo_fantasma = {coordenada_ninho.linha, coordenada_ninho.coluna, 1, 1};
-                fantasmas[indice_fantasma] = novo_fantasma;
-                indice_fantasma++;
-                estado_jogo.ghosts++;
-                quantidade_fantasmas_criados++;
-                criar_novo_fantasma(matriz, coordenada_ninho);
+                criar_novo_fantasma(matriz, coordenada_ninho, fantasmas, &estado_jogo, &indice_fantasma, &quantidade_fantasmas_criados);
                 ciclos_novo_fantasma = 0;
-
             }
-            if(kbhit())
+            if(kbhit() && !matou_mr_do)
             {
                 entrada_usuario = getch();
                 if(entrada_usuario == 27)
@@ -217,24 +192,49 @@ int main(){
                     salvar_cenario(matriz);
                     salvar_gamestate(estado_jogo);
                     acaba_jogo = 1;
-                    system("cls");
+                    esc_pressionado = 1;
 
                 } else {
                     move_mr_do(matriz, posicao_mr_do(matriz), entrada_usuario, &caractere_mr_do_passou);
+                    verifica_colisoes(&estado_jogo, &quantidade_frutas, caractere_mr_do_passou);
                 }
             }
 
             LockWindowUpdate(n_console);
-            verifica_colisoes(&estado_jogo, &quantidade_frutas, caractere_mr_do_passou);
-            verifica_estado();
+            resultado_jogo = verifica_estado(estado_jogo, quantidade_fantasmas_criados, quantidade_frutas);
             imprime_matriz(matriz);
             imprime_display(estado_jogo.score, quantidade_frutas);
             LockWindowUpdate(NULL);
 
+            switch(resultado_jogo)
+            {
+            case 1:
+                system("cls");
+                printf("Voce derrotou todos os fantasmas, parabens!\n");
+                system("pause");
+                acaba_jogo = 1;
+                break;
+            case 2:
+                system("cls");
+                printf("Voce pegou todas as frutas, parabens!\n");
+                system("pause");
+                acaba_jogo = 1;
+                break;
+            }
+
+            if(matou_mr_do)
+                acaba_jogo = 1;
+
+            if(acaba_jogo && !esc_pressionado)
+            {
+                system("cls");
+                salvar_highscores(estado_jogo, vetor_pontuacoes);
+            }
+
             ciclos_novo_fantasma++;
             ciclos_move_fantasma++;
 
-            Sleep(50);
+            Sleep(25);
         }
 	return 0;
 }
@@ -375,14 +375,14 @@ Coordenada posicao_mr_do(char mat[NUMERO_LINHAS][NUMERO_COLUNAS]){
 ///Retora uma struct do tipo coordenada que contém as linha e coluna do ninho (caracter 'n')
 Coordenada posicao_ninho(char mat[NUMERO_LINHAS][NUMERO_COLUNAS])
 {
-    int i = 0;
-    int j = 0;
+	int i = 0;
+	int j = 0;
 	for(i = 0; i < NUMERO_LINHAS; i++){
 		for(j = 0; j < NUMERO_COLUNAS; j++){
 			if(mat[i][j] == 'n')
             {
-                Coordenada posicao_ninho = {i, j};
-                return posicao_ninho;
+                Coordenada coordenada = {i, j};
+                return coordenada;
 			}
 		}
 	}
@@ -575,10 +575,18 @@ void novo_GameState (GameState *estado_jogo)
     }
 }
 
-/// Verifica se ainda existem fantasmas ou frutas
-void verifica_estado()
+/// Verifica se ainda existem fantasmas ou frutas. Retorna 1 caso todos os fantasmas foram destruídos, retorna 2 caso todas as frutas tenham sido pegas
+int verifica_estado(GameState estado_jogo, int fantasmas_criados, int quantidade_frutas)
 {
-
+    if((estado_jogo.ghosts == 0) && (fantasmas_criados ==  10))
+    {
+        return 1;
+    }
+    if(quantidade_frutas == 0)
+    {
+        return 2;
+    }
+    return 0;
 }
 
 /// Imprime a pontuação e outras informações
@@ -613,16 +621,28 @@ int conta_fantasmas(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS])
 
 int is_cross(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasma)
 {
-    int cruzamento=0;
+    int cruzamento = 0;
 
     if(matriz[fantasma.linha+1][fantasma.coluna] == 'v')
+    {
         cruzamento++;
+    }
+
     if(matriz[fantasma.linha-1][fantasma.coluna] == 'v')
+    {
         cruzamento++;
+    }
+
     if(matriz[fantasma.linha][fantasma.coluna+1] == 'v')
+    {
         cruzamento++;
+    }
+
     if(matriz[fantasma.linha][fantasma.coluna-1] == 'v')
+    {
         cruzamento++;
+    }
+
 
     if(cruzamento > 2)
     {
@@ -649,25 +669,25 @@ int is_next_wall(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasma)
     int is_wall = 0;
 
     /// A variável estado representa a direção que o fantasma está andando
-    /// 1: Subindo 2: Direita
-    /// 3: Descendo 4: Esquerda
+    /// 0: Subindo 1: Direita
+    /// 2: Descendo 3: Esquerda
 
     switch(fantasma.ultima_direcao)
     {
+    case 0:
+        if((matriz[fantasma.linha-1][fantasma.coluna] == 'p') || ((fantasma.linha - 1) < 0))
+            is_wall = 1;
+        break;
     case 1:
-        if(matriz[fantasma.linha-1][fantasma.coluna] == 'p' || (fantasma.linha - 1) < 0)
+        if((matriz[fantasma.linha][fantasma.coluna+1] == 'p') || ((fantasma.coluna + 1) > 59))
             is_wall = 1;
         break;
     case 2:
-        if(matriz[fantasma.linha][fantasma.coluna+1] == 'p' || (fantasma.coluna + 1) > 59)
+        if((matriz[fantasma.linha+1][fantasma.coluna] == 'p') || ((fantasma.linha + 1) > 22))
             is_wall = 1;
         break;
     case 3:
-        if(matriz[fantasma.linha+1][fantasma.coluna] == 'p' || (fantasma.linha + 1) > 22)
-            is_wall = 1;
-        break;
-    case 4:
-        if(matriz[fantasma.linha][fantasma.coluna-1] == 'p' || (fantasma.coluna) < 0)
+        if((matriz[fantasma.linha][fantasma.coluna-1] == 'p') || ((fantasma.coluna - 1) < 0))
             is_wall = 1;
         break;
     }
@@ -675,13 +695,15 @@ int is_next_wall(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Fantasma fantasma)
 }
 
 // Move o fantasma de acordo com  ultima_direcao atual
-void move_fantasma(Fantasma *fantasma, char matriz[NUMERO_LINHAS][NUMERO_COLUNAS])
+void move_fantasma(Fantasma *fantasma, char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, int *matou)
 {
     /// A variável ultima_direcao representa a direção que o fantasma está andando
-    /// 1: Subindo 2: Direita
-    /// 3: Descendo 4: Esquerda
+    /// 0: Subindo 1: Direita
+    /// 2: Descendo 3: Esquerda
+    int ninho_linha = ninho.linha;
+    int ninho_coluna = ninho.coluna;
 
-    if((fantasma->linha == posicao_ninho(matriz).linha) && (fantasma->coluna == posicao_ninho(matriz).coluna))
+    if((fantasma->linha == ninho_linha) && (fantasma->coluna == ninho_coluna))
     {
         matriz[fantasma->linha][fantasma->coluna] = 'n';
     }
@@ -692,24 +714,64 @@ void move_fantasma(Fantasma *fantasma, char matriz[NUMERO_LINHAS][NUMERO_COLUNAS
 
     switch(fantasma->ultima_direcao)
     {
-    case 1:
+    case 0:
+        if(matriz[fantasma->linha-1][fantasma->coluna] == 'd')
+            *matou = 1;
         matriz[fantasma->linha-1][fantasma->coluna] = 'i';
         fantasma->linha = fantasma->linha-1;
         break;
-    case 2:
+    case 1:
+        if(matriz[fantasma->linha][fantasma->coluna+1] == 'd')
+             *matou = 1;
         matriz[fantasma->linha][fantasma->coluna+1] = 'i';
         fantasma->coluna = fantasma->coluna+1;
         break;
-    case 3:
+    case 2:
+        if(matriz[fantasma->linha+1][fantasma->coluna] == 'd')
+             *matou = 1;
         matriz[fantasma->linha+1][fantasma->coluna] = 'i';
         fantasma->linha = fantasma->linha+1;
-    case 4:
+        break;
+    case 3:
+        if(matriz[fantasma->linha][fantasma->coluna-1] == 'd')
+             *matou = 1;
         matriz[fantasma->linha][fantasma->coluna-1] = 'i';
         fantasma->coluna = fantasma->coluna-1;
+        break;
     }
 }
 
-void criar_novo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho)
+void criar_novo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, Fantasma fantasmas[10], GameState *estado_jogo, int *indice_fantasma, int *quantidade_fantasmas_criados)
 {
+    Fantasma novo_fantasma = {ninho.linha, ninho.coluna, 1, 2};
+    fantasmas[*indice_fantasma] = novo_fantasma;
+    *indice_fantasma = *indice_fantasma + 1;
+    estado_jogo->ghosts = estado_jogo->ghosts + 1;
+    *quantidade_fantasmas_criados = *quantidade_fantasmas_criados + 1;
     matriz[ninho.linha][ninho.coluna] = 'i';
+}
+
+void novo_passo_fantasma(char matriz[NUMERO_LINHAS][NUMERO_COLUNAS], Coordenada ninho, Fantasma fantasmas[10], GameState estado_jogo, int *matou)
+{
+    int i;
+    int direcao_seguinte;
+    for(i = 0; i < estado_jogo.ghosts; i++)
+    {
+        if(fantasmas[i].estado)
+        {
+            while(is_next_wall(matriz, fantasmas[i]))
+            {
+                if(is_cross(matriz, fantasmas[i]) == 1)
+                {
+                    nova_direcao_fantasma(matriz, &fantasmas[i], fantasmas[i].ultima_direcao);
+                }
+                else
+                {
+                    fantasmas[i].ultima_direcao = rand() %4;
+                }
+            }
+            move_fantasma(&fantasmas[i], matriz, ninho, matou);
+        }
+
+    }
 }
