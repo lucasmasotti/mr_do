@@ -6,8 +6,8 @@
 #define NUMERO_LINHAS 23
 #define NUMERO_COLUNAS 61
 #define NUMERO_FANTASMAS 10
-#define CICLOS_NOVO_FANTASMA 120
-#define CICLOS_NOVO_MOVIMENTO 2
+#define CICLOS_NOVO_FANTASMA 60
+#define CICLOS_NOVO_MOVIMENTO 1
 
 // Structs
 typedef struct
@@ -138,7 +138,7 @@ int main(){
         if(menu_opcao > 4 || menu_opcao < 1)
         {
             printf("\nOpcao invalida, digite novamente");
-            Sleep(500);
+            Sleep(1000);
             system("cls");
         }
     }while(menu_opcao > 4 || menu_opcao < 1);
@@ -149,6 +149,8 @@ int main(){
                 abre_fase(matriz, fase1);
                 estado_jogo.ghosts = conta_fantasmas(matriz);
                 coordenada_ninho = posicao_ninho(matriz);
+                indice_fantasma = recoloca_fantasmas(matriz, fantasmas);
+                quantidade_fantasmas_criados = indice_fantasma+1;
                 break;
         case 2:
                 abre_fase(matriz, fase_salva);
